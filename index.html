@@ -48,7 +48,7 @@
 </head>
 <body id="app-body" class="bg-blue-50 min-h-screen text-gray-800 font-sans transition-all duration-200">
 
-  <!-- ==================== STEP 1: ONBOARDING SCREEN ==================== -->
+  <!-- ==================== PAGE 1: ONBOARDING SCREEN ==================== -->
   <div id="onboarding-screen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-indigo-800">
     <div class="bg-white rounded-3xl shadow-2xl p-6 sm:p-10 max-w-lg w-full border-4 border-blue-200">
       
@@ -107,8 +107,8 @@
     </div>
   </div>
 
-  <!-- ==================== STEP 2: MAIN APP INTERFACE ==================== -->
-  <div id="main-app" class="hidden">
+  <!-- ==================== PAGE 2: MAIN APP INTERFACE ==================== -->
+  <div id="main-app" style="display: none;">
 
     <!-- HEADER / ACCESSIBILITY BAR -->
     <header class="bg-blue-700 text-white shadow-xl sticky top-0 z-50">
@@ -161,7 +161,7 @@
 
     <!-- ALARM ALERT BANNER -->
     <section class="max-w-6xl mx-auto px-4 pt-4">
-      <div id="alarm-banner" class="hidden bg-red-600 text-white p-6 rounded-3xl shadow-2xl border-4 border-red-300 alarm-active">
+      <div id="alarm-banner" style="display: none;" class="bg-red-600 text-white p-6 rounded-3xl shadow-2xl border-4 border-red-300 alarm-active">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center space-x-4">
             <i class="fa-solid fa-bell text-5xl animate-bounce"></i>
@@ -184,7 +184,7 @@
       <section class="lg:col-span-5">
         <div class="bg-card bg-white p-6 rounded-3xl shadow-md border-2 border-blue-100 sticky top-24">
           <h2 class="text-2xl font-extrabold text-blue-900 mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-prescription-bottle-medical text-blue-600"></i> Doctor Recommended Medicine
+            <i class="fa-solid fa-prescription-bottle-medical text-blue-600"></i> Add Medicine
           </h2>
           <p class="text-sm text-gray-600 mb-5">Type medicine name for instant online description and details.</p>
 
@@ -203,7 +203,7 @@
             </div>
 
             <!-- ONLINE SEARCH RESULTS PREVIEW BOX -->
-            <div id="search-preview-box" class="hidden p-4 rounded-2xl bg-indigo-50 border-2 border-indigo-200">
+            <div id="search-preview-box" style="display: none;" class="p-4 rounded-2xl bg-indigo-50 border-2 border-indigo-200">
               <div class="flex items-center justify-between mb-1">
                 <span class="font-bold text-indigo-900 text-sm flex items-center gap-1">
                   <i class="fa-solid fa-globe text-indigo-600"></i> Online Search Match:
@@ -331,7 +331,7 @@
     // State Variables
     let currentUser = null;
     let medicines = [];
-    let onlineCache = {}; // Caches online search results
+    let onlineCache = {};
     let alarmAudioContext = null;
     let alarmInterval = null;
 
@@ -347,7 +347,7 @@
       checkUserStatus();
       updateClock();
       setInterval(updateClock, 1000);
-      setInterval(checkAlarmSchedule, 10000); // Check alarms every 10 seconds
+      setInterval(checkAlarmSchedule, 10000);
 
       // Auto-trigger online search when typing medicine name after slight delay
       let searchDebounce;
@@ -359,7 +359,7 @@
           if (name.length >= 3) {
             searchDebounce = setTimeout(() => searchMedicineOnline(true), 600);
           } else {
-            document.getElementById('search-preview-box').classList.add('hidden');
+            document.getElementById('search-preview-box').style.display = 'none';
           }
         });
       }
@@ -376,7 +376,7 @@
         return;
       }
 
-      previewBox.classList.remove('hidden');
+      previewBox.style.display = 'block';
       descText.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-indigo-600"></i> Searching online medical databases for <b>"${medNameInput}"</b>...`;
 
       const key = medNameInput.toLowerCase();
@@ -390,7 +390,6 @@
       }
 
       try {
-        // Query official openFDA API
         const response = await fetch(`https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(medNameInput)}"+openfda.generic_name:"${encodeURIComponent(medNameInput)}"&limit=1`);
         
         if (response.ok) {
@@ -400,6 +399,10 @@
           let purpose = result.purpose ? result.purpose[0] : (result.indications_and_usage ? result.indications_and_usage[0] : "Official prescription medication.");
           let sideEffects = result.warnings ? result.warnings[0] : (result.adverse_reactions ? result.adverse_reactions[0] : "Consult medical provider for warning details.");
 
-          // Truncate long descriptions for seniors
           if (purpose.length > 220) purpose = purpose.substring(0, 220) + "...";
-          if (sideEffects.length > 180) sideEffects = sideEffects.substring(0, 180
+          if (sideEffects.length > 180) sideEffects = sideEffects.substring(0, 180) + "...";
+
+          const onlineInfo = {
+            description: purpose,
+            sideEffects: sideEffects,
+            advice:
