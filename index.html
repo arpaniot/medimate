@@ -60,7 +60,7 @@
         <p class="text-gray-600 text-lg mt-2 font-medium">Your personal smart senior medication companion.</p>
       </div>
 
-      <form id="onboarding-form" onsubmit="saveUserProfile(event)" class="space-y-5">
+      <form id="onboarding-form" class="space-y-5">
         <!-- Name -->
         <div>
           <label class="block text-lg font-bold text-gray-700 mb-1">
@@ -124,16 +124,16 @@
 
         <!-- Senior Controls & Reset Profile -->
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <button onclick="toggleTextSize()" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow">
+          <button type="button" onclick="toggleTextSize()" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow">
             <i class="fa-solid fa-font"></i> Text Size
           </button>
-          <button onclick="toggleContrast()" class="bg-yellow-500 hover:bg-yellow-400 text-blue-950 px-3 py-2 rounded-xl font-extrabold text-sm flex items-center gap-1.5 shadow">
+          <button type="button" onclick="toggleContrast()" class="bg-yellow-500 hover:bg-yellow-400 text-blue-950 px-3 py-2 rounded-xl font-extrabold text-sm flex items-center gap-1.5 shadow">
             <i class="fa-solid fa-circle-half-stroke"></i> Contrast
           </button>
-          <button onclick="requestNotificationPermission()" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow">
+          <button type="button" onclick="requestNotificationPermission()" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow">
             <i class="fa-solid fa-bell"></i> Alerts
           </button>
-          <button onclick="resetProfile()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 shadow" title="Reset Senior Profile">
+          <button type="button" onclick="resetProfile()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 shadow" title="Reset Senior Profile">
             <i class="fa-solid fa-arrows-rotate"></i> Reset
           </button>
         </div>
@@ -153,7 +153,7 @@
             <p class="text-sm text-blue-200" id="profile-display-details">Age: -- | Blood Group: --</p>
           </div>
         </div>
-        <button onclick="speakWelcomeMessage()" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 border border-blue-400 shadow">
+        <button type="button" onclick="speakWelcomeMessage()" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 border border-blue-400 shadow">
           <i class="fa-solid fa-volume-high text-lg"></i> Read Profile
         </button>
       </div>
@@ -170,7 +170,7 @@
               <p id="alarm-text" class="text-xl font-bold mt-1">It's time to take your medicine!</p>
             </div>
           </div>
-          <button onclick="stopAlarm()" class="bg-white text-red-600 px-8 py-4 rounded-2xl font-black text-xl shadow-lg hover:bg-gray-100 flex items-center gap-2">
+          <button type="button" onclick="stopAlarm()" class="bg-white text-red-600 px-8 py-4 rounded-2xl font-black text-xl shadow-lg hover:bg-gray-100 flex items-center gap-2">
             <i class="fa-solid fa-check-circle text-2xl"></i> I Took It
           </button>
         </div>
@@ -188,7 +188,7 @@
           </h2>
           <p class="text-sm text-gray-600 mb-5">Type medicine name for instant online description and details.</p>
 
-          <form id="med-form" onsubmit="handleAddMedicine(event)" class="space-y-4">
+          <form id="med-form" class="space-y-4">
             <!-- Medicine Name & Search Online -->
             <div>
               <label class="block text-base font-bold text-gray-800 mb-1">Medicine Name</label>
@@ -294,7 +294,7 @@
 
   <!-- JAVASCRIPT APP LOGIC -->
   <script>
-    // Fallback Knowledgebase for Offline / Instant Lookups
+    // Fallback Knowledgebase
     const localDrugDatabase = {
       "metformin": {
         description: "Metformin helps control high blood sugar levels in adults with type 2 diabetes.",
@@ -328,6 +328,33 @@
       }
     };
 
+    // Safe Storage Wrappers
+    function getStoredData(key) {
+      try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : null;
+      } catch (e) {
+        console.warn("Storage read error, using in-memory state:", e);
+        return null;
+      }
+    }
+
+    function setStoredData(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn("Storage write error, using in-memory state:", e);
+      }
+    }
+
+    function removeStoredData(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn("Storage remove error:", e);
+      }
+    }
+
     // State Variables
     let currentUser = null;
     let medicines = [];
@@ -337,11 +364,18 @@
 
     // Initialization
     document.addEventListener('DOMContentLoaded', () => {
-      try {
-        currentUser = JSON.parse(localStorage.getItem('seniorRxUser')) || null;
-        medicines = JSON.parse(localStorage.getItem('seniorRxMeds')) || [];
-      } catch (e) {
-        console.error("Storage parse error:", e);
+      currentUser = getStoredData('seniorRxUser');
+      medicines = getStoredData('seniorRxMeds') || [];
+
+      // Setup Event Listeners
+      const onboardingForm = document.getElementById('onboarding-form');
+      if (onboardingForm) {
+        onboardingForm.addEventListener('submit', saveUserProfile);
+      }
+
+      const medForm = document.getElementById('med-form');
+      if (medForm) {
+        medForm.addEventListener('submit', handleAddMedicine);
       }
 
       checkUserStatus();
@@ -349,7 +383,7 @@
       setInterval(updateClock, 1000);
       setInterval(checkAlarmSchedule, 10000);
 
-      // Auto-trigger online search when typing medicine name after slight delay
+      // Auto-trigger online search
       let searchDebounce;
       const medInput = document.getElementById('med-name');
       if (medInput) {
@@ -381,7 +415,6 @@
 
       const key = medNameInput.toLowerCase();
 
-      // Check local cache or offline database first
       if (localDrugDatabase[key]) {
         const local = localDrugDatabase[key];
         descText.innerHTML = `<b>${medNameInput.toUpperCase()}</b>: ${local.description}<br><span class="text-xs text-red-600"><b>Side Effects:</b> ${local.sideEffects}</span>`;
@@ -405,4 +438,322 @@
           const onlineInfo = {
             description: purpose,
             sideEffects: sideEffects,
-            advice:
+            advice: "Fetched live from FDA prescription records."
+          };
+
+          onlineCache[key] = onlineInfo;
+          descText.innerHTML = `<b>${medNameInput.toUpperCase()}</b>: ${purpose}<br><span class="text-xs text-red-600"><b>Warnings:</b> ${sideEffects}</span>`;
+        } else {
+          descText.innerHTML = `<b>${medNameInput.toUpperCase()}</b>: Prescription medicine. Take exactly as prescribed by your doctor.<br><span class="text-xs text-red-600"><b>Side Effects:</b> Check with your pharmacist or doctor.</span>`;
+        }
+      } catch (err) {
+        descText.innerHTML = `<b>${medNameInput.toUpperCase()}</b>: Prescription medicine. Take as instructed by your doctor.`;
+      }
+    }
+
+    // Check Status & Switch View
+    function checkUserStatus() {
+      const onboardingScreen = document.getElementById('onboarding-screen');
+      const mainApp = document.getElementById('main-app');
+
+      if (currentUser && currentUser.name) {
+        onboardingScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        
+        document.getElementById('profile-display-name').innerText = `Hello, ${currentUser.name}!`;
+        document.getElementById('profile-display-details').innerText = `Age: ${currentUser.age} years | Blood Group: ${currentUser.blood}`;
+        
+        renderSchedule();
+        renderKnowledgeBase();
+      } else {
+        onboardingScreen.style.display = 'flex';
+        mainApp.style.display = 'none';
+      }
+    }
+
+    // Save Senior Profile
+    function saveUserProfile(event) {
+      if (event) event.preventDefault();
+
+      const nameInput = document.getElementById('user-name').value.trim();
+      const ageInput = document.getElementById('user-age').value.trim();
+      const bloodInput = document.getElementById('user-blood').value;
+
+      if (!nameInput || !ageInput || !bloodInput) {
+        alert("Please complete all profile details.");
+        return false;
+      }
+
+      currentUser = {
+        name: nameInput,
+        age: ageInput,
+        blood: bloodInput
+      };
+
+      setStoredData('seniorRxUser', currentUser);
+      checkUserStatus();
+      speakText(`Welcome to MediMate, ${currentUser.name}. Your profile is ready.`);
+      return false;
+    }
+
+    // Reset Senior Profile
+    function resetProfile() {
+      if (confirm("Are you sure you want to reset your MediMate profile and schedule?")) {
+        removeStoredData('seniorRxUser');
+        removeStoredData('seniorRxMeds');
+        currentUser = null;
+        medicines = [];
+        checkUserStatus();
+      }
+    }
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-display').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Add Recommended Medicine
+    function handleAddMedicine(event) {
+      if (event) event.preventDefault();
+
+      const name = document.getElementById('med-name').value.trim();
+      const dosage = document.getElementById('med-dosage').value.trim();
+      const frequency = document.getElementById('med-frequency').value;
+      const time = document.getElementById('med-time').value;
+      const food = document.getElementById('med-food').value;
+
+      const newMed = {
+        id: Date.now(),
+        name: name,
+        dosage: dosage,
+        frequency: frequency,
+        time: time,
+        food: food,
+        takenToday: false
+      };
+
+      medicines.push(newMed);
+      saveAndRefresh();
+
+      document.getElementById('med-form').reset();
+      document.getElementById('search-preview-box').style.display = 'none';
+      speakText(`Added ${name} to your MediMate schedule for ${formatTime(time)}.`);
+      return false;
+    }
+
+    function toggleTaken(id) {
+      medicines = medicines.map(m => m.id === id ? { ...m, takenToday: !m.takenToday } : m);
+      saveAndRefresh();
+    }
+
+    function deleteMedicine(id) {
+      medicines = medicines.filter(m => m.id !== id);
+      saveAndRefresh();
+    }
+
+    function saveAndRefresh() {
+      setStoredData('seniorRxMeds', medicines);
+      renderSchedule();
+      renderKnowledgeBase();
+    }
+
+    // Render Schedule List
+    function renderSchedule() {
+      const listContainer = document.getElementById('med-list');
+
+      if (medicines.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-10 text-gray-500">
+            <i class="fa-solid fa-capsules text-5xl mb-3 text-blue-300"></i>
+            <p class="text-xl font-bold">No medicines added yet.</p>
+            <p class="text-base">Enter your recommended medicines using the MediMate form on the left.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = medicines.map(med => {
+        const key = med.name.toLowerCase();
+        const info = onlineCache[key] || localDrugDatabase[key] || { sideEffects: "Consult doctor or pharmacist for side effects.", description: "Prescription medication." };
+
+        return `
+          <div class="p-5 rounded-2xl border-3 ${med.takenToday ? 'bg-green-50 border-green-400' : 'bg-white border-blue-200'} shadow-md transition">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-2xl font-black ${med.takenToday ? 'line-through text-gray-500' : 'text-blue-900'}">${med.name}</h3>
+                  <span class="bg-blue-100 text-blue-800 font-extrabold px-3 py-1 rounded-lg text-sm">${med.dosage}</span>
+                </div>
+                <p class="text-base text-gray-700 mt-2">
+                  <i class="fa-regular fa-clock text-blue-600 font-bold"></i> <b>${formatTime(med.time)}</b> | 
+                  <i class="fa-solid fa-utensils text-blue-600 font-bold"></i> <b>${med.food}</b> | 
+                  <i class="fa-solid fa-repeat text-blue-600 font-bold"></i> ${med.frequency}x Daily
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="speakMedicineInfo('${med.name}', '${med.dosage}', '${med.time}', '${med.food}')" class="p-3 bg-blue-100 text-blue-800 rounded-xl hover:bg-blue-200 text-lg shadow" title="Read Aloud">
+                  <i class="fa-solid fa-volume-high"></i>
+                </button>
+                <button type="button" onclick="toggleTaken(${med.id})" class="px-5 py-3 rounded-xl font-extrabold text-base ${med.takenToday ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'} shadow">
+                  ${med.takenToday ? '<i class="fa-solid fa-check"></i> Taken' : 'Mark Taken'}
+                </button>
+                <button type="button" onclick="deleteMedicine(${med.id})" class="p-3 text-red-500 hover:text-red-700 text-lg" title="Delete">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Auto-Calculated Side Effects & Description -->
+            <div class="mt-4 text-sm bg-blue-50/80 p-3 rounded-xl border border-blue-200 space-y-1">
+              <p class="text-gray-800"><b>Description:</b> ${info.description}</p>
+              <p class="text-red-700 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> <b>Side Effects / Warnings:</b> ${info.sideEffects}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Database Info Cards
+    function renderKnowledgeBase() {
+      const kbContainer = document.getElementById('knowledge-base');
+      const keys = Object.keys(localDrugDatabase);
+
+      kbContainer.innerHTML = keys.map(key => {
+        const item = localDrugDatabase[key];
+        return `
+          <div class="p-4 bg-blue-50/70 rounded-2xl border border-blue-200">
+            <h4 class="font-extrabold text-blue-950 capitalize text-lg">${key}</h4>
+            <p class="text-sm text-gray-800 mt-1"><b>Description:</b> ${item.description}</p>
+            <p class="text-sm text-red-600 font-medium mt-1"><b>Side Effects:</b> ${item.sideEffects}</p>
+            <p class="text-sm text-gray-700 italic mt-1"><b>Doctor Advice:</b> ${item.advice}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Format 24h to 12h
+    function formatTime(timeStr) {
+      if(!timeStr) return '';
+      const [h, m] = timeStr.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = hour % 12 || 12;
+      return `${formattedHour}:${m} ${ampm}`;
+    }
+
+    // Check Alarms
+    function checkAlarmSchedule() {
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+      medicines.forEach(med => {
+        if (med.time === currentTimeStr && !med.takenToday) {
+          triggerAlarm(med);
+        }
+      });
+    }
+
+    // Alarm Trigger
+    function triggerAlarm(med) {
+      const banner = document.getElementById('alarm-banner');
+      const text = document.getElementById('alarm-text');
+
+      text.innerText = `Please take ${med.name} (${med.dosage}) - Instructions: ${med.food}`;
+      banner.style.display = 'block';
+
+      speakText(`MediMate Alarm for ${currentUser ? currentUser.name : ''}! It is time to take your medicine: ${med.name}, ${med.dosage}, ${med.food}`);
+
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("MediMate Reminder", {
+          body: `Time for ${med.name} (${med.dosage})`,
+          icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png"
+        });
+      }
+
+      startAudioBeep();
+    }
+
+    // Web Audio Pitch Sound
+    function startAudioBeep() {
+      if (alarmAudioContext) return;
+      try {
+        alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        alarmInterval = setInterval(() => {
+          const osc = alarmAudioContext.createOscillator();
+          const gain = alarmAudioContext.createGain();
+          osc.connect(gain);
+          gain.connect(alarmAudioContext.destination);
+          osc.type = "sine";
+          osc.frequency.value = 800;
+          gain.gain.setValueAtTime(0.15, alarmAudioContext.currentTime);
+          osc.start();
+          osc.stop(alarmAudioContext.currentTime + 0.35);
+        }, 700);
+      } catch (e) {
+        console.warn("Audio context error:", e);
+      }
+    }
+
+    function stopAlarm() {
+      document.getElementById('alarm-banner').style.display = 'none';
+      if (alarmInterval) clearInterval(alarmInterval);
+      if (alarmAudioContext) {
+        try {
+          alarmAudioContext.close();
+        } catch(e) {}
+        alarmAudioContext = null;
+      }
+    }
+
+    // Text To Speech
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function speakWelcomeMessage() {
+      if (currentUser) {
+        speakText(`MediMate profile for ${currentUser.name}. Age ${currentUser.age}. Blood group ${currentUser.blood}.`);
+      }
+    }
+
+    function speakMedicineInfo(name, dosage, time, food) {
+      speakText(`Medicine name: ${name}. Dosage: ${dosage}. Time: ${formatTime(time)}. Take ${food}.`);
+    }
+
+    // Accessibility Controls
+    function toggleContrast() {
+      document.body.classList.toggle('high-contrast');
+    }
+
+    let textSizeState = 0;
+    function toggleTextSize() {
+      const body = document.getElementById('app-body');
+      body.classList.remove('text-large', 'text-xlarge');
+      textSizeState = (textSizeState + 1) % 3;
+      if (textSizeState === 1) body.classList.add('text-large');
+      if (textSizeState === 2) body.classList.add('text-xlarge');
+    }
+
+    function requestNotificationPermission() {
+      if ("Notification" in window) {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            alert("MediMate Alerts Enabled!");
+          } else {
+            alert("Notification permission denied or blocked.");
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
