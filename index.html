@@ -60,7 +60,7 @@
         <p class="text-gray-600 text-lg mt-2">Let's set up your profile to manage your medicines safely.</p>
       </div>
 
-      <form onsubmit="saveUserProfile(event)" class="space-y-5">
+      <form id="onboarding-form" onsubmit="saveUserProfile(event)" class="space-y-5">
         <!-- Name -->
         <div>
           <label class="block text-lg font-bold text-gray-700 mb-1">
@@ -98,7 +98,7 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold text-2xl py-4 rounded-2xl shadow-lg transition duration-200 flex items-center justify-center gap-3">
+        <button type="submit" id="submit-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold text-2xl py-4 rounded-2xl shadow-lg transition duration-200 flex items-center justify-center gap-3 cursor-pointer">
           <span>Continue</span>
           <i class="fa-solid fa-arrow-right"></i>
         </button>
@@ -310,13 +310,20 @@
     };
 
     // State Variables
-    let currentUser = JSON.parse(localStorage.getItem('seniorRxUser')) || null;
-    let medicines = JSON.parse(localStorage.getItem('seniorRxMeds')) || [];
+    let currentUser = null;
+    let medicines = [];
     let alarmAudioContext = null;
     let alarmInterval = null;
 
     // Initialization
     document.addEventListener('DOMContentLoaded', () => {
+      try {
+        currentUser = JSON.parse(localStorage.getItem('seniorRxUser')) || null;
+        medicines = JSON.parse(localStorage.getItem('seniorRxMeds')) || [];
+      } catch (e) {
+        console.error("Storage parse error:", e);
+      }
+
       checkUserStatus();
       updateClock();
       setInterval(updateClock, 1000);
@@ -325,9 +332,13 @@
 
     // Check if senior profile exists
     function checkUserStatus() {
-      if (currentUser) {
-        document.getElementById('onboarding-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
+      const onboardingScreen = document.getElementById('onboarding-screen');
+      const mainApp = document.getElementById('main-app');
+
+      if (currentUser && currentUser.name) {
+        onboardingScreen.style.display = 'none';
+        mainApp.style.display = 'block';
+        mainApp.classList.remove('hidden');
         
         document.getElementById('profile-display-name').innerText = `Hello, ${currentUser.name}!`;
         document.getElementById('profile-display-details').innerText = `Age: ${currentUser.age} years | Blood Group: ${currentUser.blood}`;
@@ -335,23 +346,40 @@
         renderSchedule();
         renderKnowledgeBase();
       } else {
-        document.getElementById('onboarding-screen').classList.remove('hidden');
-        document.getElementById('main-app').classList.add('hidden');
+        onboardingScreen.style.display = 'flex';
+        onboardingScreen.classList.remove('hidden');
+        mainApp.style.display = 'none';
       }
     }
 
-    // Save Senior Profile
+    // Save Senior Profile with Guaranteed Direct Page Transition
     function saveUserProfile(event) {
-      event.preventDefault();
-      const name = document.getElementById('user-name').value.trim();
-      const age = document.getElementById('user-age').value.trim();
-      const blood = document.getElementById('user-blood').value;
+      if (event) event.preventDefault();
 
-      currentUser = { name, age, blood };
-      localStorage.setItem('seniorRxUser', JSON.stringify(currentUser));
+      const nameInput = document.getElementById('user-name').value.trim();
+      const ageInput = document.getElementById('user-age').value.trim();
+      const bloodInput = document.getElementById('user-blood').value;
 
-      speakText(`Welcome ${name}. Your profile is ready.`);
+      if (!nameInput || !ageInput || !bloodInput) {
+        alert("Please complete all profile details.");
+        return false;
+      }
+
+      currentUser = {
+        name: nameInput,
+        age: ageInput,
+        blood: bloodInput
+      };
+
+      try {
+        localStorage.setItem('seniorRxUser', JSON.stringify(currentUser));
+      } catch (e) {
+        console.error("Storage error", e);
+      }
+
       checkUserStatus();
+      speakText(`Welcome ${currentUser.name}. Your profile is ready.`);
+      return false;
     }
 
     // Reset Senior Profile
@@ -373,7 +401,7 @@
 
     // Add Recommended Medicine
     function handleAddMedicine(event) {
-      event.preventDefault();
+      if (event) event.preventDefault();
 
       const name = document.getElementById('med-name').value.trim();
       const dosage = document.getElementById('med-dosage').value.trim();
@@ -396,6 +424,7 @@
 
       document.getElementById('med-form').reset();
       speakText(`Added ${name} to your schedule for ${formatTime(time)}.`);
+      return false;
     }
 
     function toggleTaken(id) {
@@ -409,7 +438,11 @@
     }
 
     function saveAndRefresh() {
-      localStorage.setItem('seniorRxMeds', JSON.stringify(medicines));
+      try {
+        localStorage.setItem('seniorRxMeds', JSON.stringify(medicines));
+      } catch (e) {
+        console.error("Storage error", e);
+      }
       renderSchedule();
       renderKnowledgeBase();
     }
@@ -444,4 +477,165 @@
                 <p class="text-base text-gray-700 mt-2">
                   <i class="fa-regular fa-clock text-blue-600 font-bold"></i> <b>${formatTime(med.time)}</b> | 
                   <i class="fa-solid fa-utensils text-blue-600 font-bold"></i> <b>${med.food}</b> | 
-                  <i class="fa-solid fa-repeat text-blue-600 font-bold"></i> ${med
+                  <i class="fa-solid fa-repeat text-blue-600 font-bold"></i> ${med.frequency}x Daily
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="speakMedicineInfo('${med.name}', '${med.dosage}', '${med.time}', '${med.food}')" class="p-3 bg-blue-100 text-blue-800 rounded-xl hover:bg-blue-200 text-lg shadow" title="Read Aloud">
+                  <i class="fa-solid fa-volume-high"></i>
+                </button>
+                <button onclick="toggleTaken(${med.id})" class="px-5 py-3 rounded-xl font-extrabold text-base ${med.takenToday ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'} shadow">
+                  ${med.takenToday ? '<i class="fa-solid fa-check"></i> Taken' : 'Mark Taken'}
+                </button>
+                <button onclick="deleteMedicine(${med.id})" class="p-3 text-red-500 hover:text-red-700 text-lg" title="Delete">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Auto-Calculated Side Effects & Advice -->
+            <div class="mt-4 text-sm bg-yellow-50 p-3 rounded-xl border border-yellow-200">
+              <span class="font-bold text-red-700"><i class="fa-solid fa-triangle-exclamation"></i> Potential Side Effects:</span> ${info.sideEffects}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Database Info Cards
+    function renderKnowledgeBase() {
+      const kbContainer = document.getElementById('knowledge-base');
+      const keys = Object.keys(drugDatabase);
+
+      kbContainer.innerHTML = keys.map(key => {
+        const item = drugDatabase[key];
+        return `
+          <div class="p-4 bg-blue-50/70 rounded-2xl border border-blue-200">
+            <h4 class="font-extrabold text-blue-950 capitalize text-lg">${key}</h4>
+            <p class="text-sm text-blue-800 font-bold">Purpose: ${item.purpose}</p>
+            <p class="text-sm text-gray-800 mt-1"><b class="text-red-600">Side Effects:</b> ${item.sideEffects}</p>
+            <p class="text-sm text-gray-700 italic mt-1"><b class="text-gray-900">Doctor Advice:</b> ${item.advice}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Format 24h to 12h
+    function formatTime(timeStr) {
+      if(!timeStr) return '';
+      const [h, m] = timeStr.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = hour % 12 || 12;
+      return `${formattedHour}:${m} ${ampm}`;
+    }
+
+    // Check Alarms
+    function checkAlarmSchedule() {
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+      medicines.forEach(med => {
+        if (med.time === currentTimeStr && !med.takenToday) {
+          triggerAlarm(med);
+        }
+      });
+    }
+
+    // Alarm Trigger
+    function triggerAlarm(med) {
+      const banner = document.getElementById('alarm-banner');
+      const text = document.getElementById('alarm-text');
+
+      text.innerText = `Please take ${med.name} (${med.dosage}) - Instructions: ${med.food}`;
+      banner.classList.remove('hidden');
+
+      speakText(`Attention ${currentUser ? currentUser.name : ''}! It is time to take your medicine: ${med.name}, ${med.dosage}, ${med.food}`);
+
+      if (Notification.permission === "granted") {
+        new Notification("Medicine Reminder", {
+          body: `Time for ${med.name} (${med.dosage})`,
+          icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png"
+        });
+      }
+
+      startAudioBeep();
+    }
+
+    // Web Audio Pitch Sound
+    function startAudioBeep() {
+      if (alarmAudioContext) return;
+      alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      alarmInterval = setInterval(() => {
+        const osc = alarmAudioContext.createOscillator();
+        const gain = alarmAudioContext.createGain();
+        osc.connect(gain);
+        gain.connect(alarmAudioContext.destination);
+        osc.type = "sine";
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.15, alarmAudioContext.currentTime);
+        osc.start();
+        osc.stop(alarmAudioContext.currentTime + 0.35);
+      }, 700);
+    }
+
+    function stopAlarm() {
+      document.getElementById('alarm-banner').classList.add('hidden');
+      if (alarmInterval) clearInterval(alarmInterval);
+      if (alarmAudioContext) {
+        alarmAudioContext.close();
+        alarmAudioContext = null;
+      }
+    }
+
+    // Text To Speech
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.85; // Slower rate for elderly comprehension
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function speakWelcomeMessage() {
+      if (currentUser) {
+        speakText(`Patient profile for ${currentUser.name}. Age ${currentUser.age}. Blood group ${currentUser.blood}.`);
+      }
+    }
+
+    function speakMedicineInfo(name, dosage, time, food) {
+      speakText(`Medicine name: ${name}. Dosage: ${dosage}. Time: ${formatTime(time)}. Take ${food}.`);
+    }
+
+    // Accessibility Controls
+    function toggleContrast() {
+      document.body.classList.toggle('high-contrast');
+    }
+
+    let textSizeState = 0;
+    function toggleTextSize() {
+      const body = document.getElementById('app-body');
+      body.classList.remove('text-large', 'text-xlarge');
+      textSizeState = (textSizeState + 1) % 3;
+      if (textSizeState === 1) body.classList.add('text-large');
+      if (textSizeState === 2) body.classList.add('text-xlarge');
+    }
+
+    function requestNotificationPermission() {
+      if ("Notification" in window) {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            alert("System Alerts Enabled!");
+          } else {
+            alert("Notification permission denied or blocked.");
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
