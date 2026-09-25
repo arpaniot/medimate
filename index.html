@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeniorRx Assist - Smart Medication Assistant</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* High Contrast & Senior Accessibility Modes */
+    .high-contrast {
+      background-color: #000000 !important;
+      color: #ffff00 !important;
+    }
+    .high-contrast .bg-card {
+      background-color: #1a1a1a !important;
+      border: 2px solid #ffff00 !important;
+      color: #ffffff !important;
+    }
+    .high-contrast button {
+      background-color: #ffff00 !important;
+      color: #000000 !important;
+      font-weight: bold !important;
+    }
+    .text-large {
+      font-size: 1.25rem !important;
+    }
+    .text-xlarge {
+      font-size: 1.5rem !important;
+    }
+    
+    /* Smooth Pulse Animation for Alarm */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(220, 38, 38, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+    .alarm-active {
+      animation: pulse-ring 1.5s infinite;
+    }
+  </style>
+</head>
+<body id="app-body" class="bg-blue-50 min-h-screen text-gray-800 font-sans transition-all duration-200">
+
+  <!-- TOP ACCESSIBILITY & HEADER BAR -->
+  <header class="bg-blue-700 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-heart-pulse text-3xl text-red-400"></i>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-wide">SeniorRx Assist</h1>
+          <p class="text-xs text-blue-200">Simple & Safe Medication Companion</p>
+        </div>
+      </div>
+
+      <!-- Quick Accessibility Toolbar -->
+      <div class="flex items-center gap-2 sm:gap-4 bg-blue-800 p-2 rounded-xl">
+        <button onclick="toggleTextSize()" class="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 shadow">
+          <i class="fa-solid fa-font"></i> Text Size
+        </button>
+        <button onclick="toggleContrast()" class="bg-yellow-500 hover:bg-yellow-400 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 shadow">
+          <i class="fa-solid fa-circle-half-stroke"></i> Contrast
+        </button>
+        <button onclick="requestNotificationPermission()" class="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 shadow">
+          <i class="fa-solid fa-bell"></i> Enable Alerts
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-6xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: ADD MEDICINE FORM -->
+    <section class="lg:col-span-5">
+      <div class="bg-card bg-white p-6 rounded-2xl shadow-md border border-blue-100 sticky top-24">
+        <h2 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-pills text-blue-600"></i> Add New Prescription
+        </h2>
+
+        <form id="med-form" onsubmit="handleAddMedicine(event)" class="space-y-4">
+          <!-- Medicine Name -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Medicine Name / Prescription</label>
+            <input type="text" id="med-name" required placeholder="e.g. Metformin, Paracetamol, Aspirin" 
+                   class="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-blue-600 focus:outline-none text-lg">
+          </div>
+
+          <!-- Quick Select or Custom Dosage -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-1">Dosage Amount</label>
+              <input type="text" id="med-dosage" required placeholder="e.g. 500 mg / 1 Tablet" 
+                     class="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-blue-600 focus:outline-none text-lg">
+            </div>
+
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-1">Times Per Day</label>
+              <select id="med-frequency" class="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-blue-600 focus:outline-none text-lg bg-white">
+                <option value="1">1 Time Daily</option>
+                <option value="2">2 Times Daily</option>
+                <option value="3">3 Times Daily</option>
+                <option value="4">4 Times Daily</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Time Selection -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">First Dose Time</label>
+            <input type="time" id="med-time" required 
+                   class="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-blue-600 focus:outline-none text-lg">
+          </div>
+
+          <!-- Relation to Food -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Meal Instructions</label>
+            <select id="med-food" class="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-blue-600 focus:outline-none text-lg bg-white">
+              <option value="After Food">After Food (Post-Meal)</option>
+              <option value="Before Food">Before Food (Empty Stomach)</option>
+              <option value="With Food">With Meal</option>
+            </select>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition duration-200 text-xl flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus-circle"></i> Add To Schedule
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: SCHEDULE & DRUG INFO -->
+    <section class="lg:col-span-7 space-y-6">
+
+      <!-- ALERT BANNER FOR ACTIVE ALARMS -->
+      <div id="alarm-banner" class="hidden bg-red-600 text-white p-5 rounded-2xl shadow-xl border-4 border-red-300 alarm-active">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-bell text-4xl animate-bounce"></i>
+            <div>
+              <h3 class="text-2xl font-black">MEDICATION ALARM!</h3>
+              <p id="alarm-text" class="text-lg font-semibold">It's time to take your medicine!</p>
+            </div>
+          </div>
+          <button onclick="stopAlarm()" class="bg-white text-red-600 px-6 py-3 rounded-xl font-extrabold text-lg shadow-md hover:bg-gray-100">
+            <i class="fa-solid fa-check"></i> I Took It
+          </button>
+        </div>
+      </div>
+
+      <!-- TODAY'S SCHEDULE -->
+      <div class="bg-card bg-white p-6 rounded-2xl shadow-md border border-blue-100">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-extrabold text-blue-900 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-check text-blue-600"></i> Daily Schedule
+          </h2>
+          <span id="current-time-display" class="bg-blue-100 text-blue-800 font-bold px-3 py-1 rounded-lg text-sm"></span>
+        </div>
+
+        <div id="med-list" class="space-y-4">
+          <!-- Dynamic Items Injected Here -->
+        </div>
+      </div>
+
+      <!-- MEDICAL KNOWLEDGE BASE / SIDE EFFECTS REFERENCE -->
+      <div class="bg-card bg-white p-6 rounded-2xl shadow-md border border-blue-100">
+        <h2 class="text-xl font-bold text-blue-900 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-blue-600"></i> Medicine Database & Side Effects
+        </h2>
+        <p class="text-sm text-gray-600 mb-4">Commonly prescribed senior medications & critical warnings:</p>
+
+        <div class="space-y-3" id="knowledge-base">
+          <!-- Injected dynamically based on user added medicines + standard defaults -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Local Knowledgebase for side-effect lookup
+    const medicalDatabase = {
+      "metformin": {
+        purpose: "Diabetes Management / Sugar Control",
+        sideEffects: "Mild nausea, stomach upset, diarrhea, metallic taste.",
+        advice: "Take strictly after meals to prevent stomach discomfort."
+      },
+      "atorvastatin": {
+        purpose: "Cholesterol Control & Heart Protection",
+        sideEffects: "Muscle soreness, fatigue, mild joint pain.",
+        advice: "Usually taken once daily at bedtime."
+      },
+      "amlodipine": {
+        purpose: "High Blood Pressure Control",
+        sideEffects: "Swelling in lower legs or ankles, dizziness, flushing.",
+        advice: "Rise slowly from sitting or lying down to prevent dizziness."
+      },
+      "aspirin": {
+        purpose: "Blood Thinner / Heart Health",
+        sideEffects: "Stomach irritation, easy bruising, risk of bleeding.",
+        advice: "Take with food and full glass of water."
+      },
+      "paracetamol": {
+        purpose: "Pain & Fever Relief",
+        sideEffects: "Rare at normal doses. Excessive dosage causes liver strain.",
+        advice: "Do not exceed 4000mg per 24 hours."
+      },
+      "lisinopril": {
+        purpose: "Blood Pressure & Kidney Protection",
+        sideEffects: "Dry cough, mild dizziness, elevated potassium levels.",
+        advice: "Drink adequate water throughout the day."
+      }
+    };
+
+    // App State
+    let medicines = JSON.parse(localStorage.getItem('seniorMeds')) || [];
+    let alarmAudioContext = null;
+    let alarmInterval = null;
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', () => {
+      updateTimeDisplay();
+      setInterval(updateTimeDisplay, 1000);
+      setInterval(checkScheduledAlarms, 10000); // Check alarms every 10s
+      renderSchedule();
+      renderKnowledgeBase();
+    });
+
+    // Clock Display
+    function updateTimeDisplay() {
+      const now = new Date();
+      document.getElementById('current-time-display').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Add Medicine Handler
+    function handleAddMedicine(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('med-name').value.trim();
+      const dosage = document.getElementById('med-dosage').value.trim();
+      const frequency = parseInt(document.getElementById('med-frequency').value);
+      const time = document.getElementById('med-time').value;
+      const food = document.getElementById('med-food').value;
+
+      const newMed = {
+        id: Date.now(),
+        name: name,
+        dosage: dosage,
+        frequency: frequency,
+        time: time,
+        food: food,
+        takenToday: false
+      };
+
+      medicines.push(newMed);
+      saveAndRefresh();
+      
+      // Clear Form
+      document.getElementById('med-form').reset();
+
+      // Audio feedback for seniors
+      speakText(`Added ${name} to your daily schedule.`);
+    }
+
+    // Toggle Taken Status
+    function toggleTaken(id) {
+      medicines = medicines.map(m => m.id === id ? { ...m, takenToday: !m.takenToday } : m);
+      saveAndRefresh();
+    }
+
+    // Delete Medicine
+    function deleteMedicine(id) {
+      medicines = medicines.filter(m => m.id !== id);
+      saveAndRefresh();
+    }
+
+    function saveAndRefresh() {
+      localStorage.setItem('seniorMeds', JSON.stringify(medicines));
+      renderSchedule();
+      renderKnowledgeBase();
+    }
+
+    // Render Medicine Cards
+    function renderSchedule() {
+      const listContainer = document.getElementById('med-list');
+      
+      if (medicines.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-8 text-gray-500">
+            <i class="fa-solid fa-prescription-bottle text-4xl mb-2 text-blue-300"></i>
+            <p class="text-lg">No medicines added yet.</p>
+            <p class="text-sm">Use the form on the left to add your doctor's prescriptions.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = medicines.map(med => {
+        const key = med.name.toLowerCase();
+        const info = medicalDatabase[key] || { sideEffects: "Consult doctor or pharmacist for specific side effects." };
+
+        return `
+          <div class="p-4 rounded-xl border-2 ${med.takenToday ? 'bg-green-50 border-green-300' : 'bg-white border-blue-200'} shadow-sm transition">
+            <div class="flex flex-wrap justify-between items-start gap-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-xl font-bold ${med.takenToday ? 'line-through text-gray-500' : 'text-blue-900'}">${med.name}</h3>
+                  <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md font-bold">${med.dosage}</span>
+                </div>
+                <p class="text-sm text-gray-600 mt-1">
+                  <i class="fa-regular fa-clock text-blue-600"></i> <b>${formatTime(med.time)}</b> | 
+                  <i class="fa-solid fa-utensils text-blue-600"></i> <b>${med.food}</b> | 
+                  <i class="fa-solid fa-rotate text-blue-600"></i> ${med.frequency}x daily
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="speakMedicineInfo('${med.name}', '${med.dosage}', '${med.time}', '${med.food}')" class="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200" title="Read Aloud">
+                  <i class="fa-solid fa-volume-high text-lg"></i>
+                </button>
+                <button onclick="toggleTaken(${med.id})" class="px-4 py-2 rounded-lg font-bold text-sm ${med.takenToday ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}">
+                  ${med.takenToday ? '<i class="fa-solid fa-check"></i> Taken' : 'Mark Taken'}
+                </button>
+                <button onclick="deleteMedicine(${med.id})" class="p-2 text-red-500 hover:text-red-700" title="Delete">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Side Effects Quick Accordion -->
+            <div class="mt-3 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+              <span class="font-bold text-red-600"><i class="fa-solid fa-triangle-exclamation"></i> Side Effects & Precautions:</span> ${info.sideEffects}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render Side Effect DB Cards
+    function renderKnowledgeBase() {
+      const kbContainer = document.getElementById('knowledge-base');
+      
+      const allKeys = Object.keys(medicalDatabase);
+      
+      kbContainer.innerHTML = allKeys.map(key => {
+        const item = medicalDatabase[key];
+        return `
+          <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+            <h4 class="font-bold text-blue-900 capitalize text-base">${key}</h4>
+            <p class="text-xs text-blue-700 font-semibold mb-1">Purpose: ${item.purpose}</p>
+            <p class="text-xs text-gray-700"><b class="text-red-600">Side Effects:</b> ${item.sideEffects}</p>
+            <p class="text-xs text-gray-600 italic"><b class="text-gray-800">Doctor Note:</b> ${item.advice}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Format 24hr time to 12hr AM/PM
+    function formatTime(timeStr) {
+      if(!timeStr) return '';
+      const [h, m] = timeStr.split(':');
+      const hour = parseInt(h);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = hour % 12 || 12;
+      return `${formattedHour}:${m} ${ampm}`;
+    }
+
+    // Check Alarm Matching
+    function checkScheduledAlarms() {
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+      medicines.forEach(med => {
+        if (med.time === currentTimeStr && !med.takenToday) {
+          triggerAlarm(med);
+        }
+      });
+    }
+
+    // Trigger Visual & Web Audio Sound Alarm
+    function triggerAlarm(med) {
+      const banner = document.getElementById('alarm-banner');
+      const text = document.getElementById('alarm-text');
+      
+      text.innerText = `Time to take ${med.name} (${med.dosage}) - ${med.food}`;
+      banner.classList.remove('hidden');
+
+      // Voice Alert
+      speakText(`Attention! It is time to take your medicine: ${med.name}, ${med.dosage}, ${med.food}`);
+
+      // Browser Notification
+      if (Notification.permission === "granted") {
+        new Notification("Medication Reminder", {
+          body: `Time for ${med.name} (${med.dosage})`,
+          icon: "https://cdn-icons-png.flaticon.com/512/3063/3063822.png"
+        });
+      }
+
+      // Continuous Beep Tone using Web Audio API
+      startAudioBeep();
+    }
+
+    function startAudioBeep() {
+      if (alarmAudioContext) return;
+      
+      alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      alarmInterval = setInterval(() => {
+        const osc = alarmAudioContext.createOscillator();
+        const gain = alarmAudioContext.createGain();
+        osc.connect(gain);
+        gain.connect(alarmAudioContext.destination);
+        osc.type = "sine";
+        osc.frequency.value = 880; // A5 pitch
+        gain.gain.setValueAtTime(0.1, alarmAudioContext.currentTime);
+        osc.start();
+        osc.stop(alarmAudioContext.currentTime + 0.3);
+      }, 800);
+    }
+
+    function stopAlarm() {
+      document.getElementById('alarm-banner').classList.add('hidden');
+      if (alarmInterval) clearInterval(alarmInterval);
+      if (alarmAudioContext) {
+        alarmAudioContext.close();
+        alarmAudioContext = null;
+      }
+    }
+
+    // Text To Speech helper for seniors
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Stop prior speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.85; // Slightly slower for elderly comprehension
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function speakMedicineInfo(name, dosage, time, food) {
+      const text = `Medicine: ${name}. Dosage: ${dosage}. Scheduled time: ${formatTime(time)}. Directives: Take ${food}.`;
+      speakText(text);
+    }
+
+    // High Contrast Toggle
+    function toggleContrast() {
+      document.body.classList.toggle('high-contrast');
+    }
+
+    // Text Size Toggle
+    let textSizeState = 0;
+    function toggleTextSize() {
+      const body = document.getElementById('app-body');
+      body.classList.remove('text-large', 'text-xlarge');
+      
+      textSizeState = (textSizeState + 1) % 3;
+      if (textSizeState === 1) body.classList.add('text-large');
+      if (textSizeState === 2) body.classList.add('text-xlarge');
+    }
+
+    // Request Notification Permissions
+    function requestNotificationPermission() {
+      if ("Notification" in window) {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            alert("Notifications Enabled! You will receive timely alerts.");
+          } else {
+            alert("Notification permission denied or blocked.");
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
