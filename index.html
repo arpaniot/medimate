@@ -236,7 +236,7 @@
               <p id="alarm-text" class="text-xl font-bold mt-1">It's time to take your medicine!</p>
             </div>
           </div>
-          <button type="button" onclick="stopAlarm()" class="bg-white text-red-600 px-8 py-4 rounded-2xl font-black text-xl shadow-lg hover:bg-gray-100 flex items-center gap-2">
+          <button type="button" onclick="handleAlarmTakenAction()" class="bg-white text-red-600 px-8 py-4 rounded-2xl font-black text-xl shadow-lg hover:bg-gray-100 flex items-center gap-2 cursor-pointer">
             <i class="fa-solid fa-check-circle text-2xl"></i> I Took It
           </button>
         </div>
@@ -444,6 +444,7 @@
     let alarmAudioContext = null;
     let alarmInterval = null;
     let sosTimer = null;
+    let activeAlarmMedId = null; // Track active ringing medicine
     let textSizeLevel = 0; // 0: Normal, 1: Medium, 2: Large, 3: Extra Large
 
     // Initialization
@@ -804,11 +805,23 @@
     function toggleTaken(id) {
       medicines = medicines.map(m => m.id === id ? { ...m, takenToday: !m.takenToday } : m);
       saveAndRefresh();
+      stopAlarm(); // Immediately stop siren & speech if ringing
+    }
+
+    function handleAlarmTakenAction() {
+      if (activeAlarmMedId) {
+        medicines = medicines.map(m => m.id === activeAlarmMedId ? { ...m, takenToday: true } : m);
+        saveAndRefresh();
+      }
+      stopAlarm();
     }
 
     function deleteMedicine(id) {
       medicines = medicines.filter(m => m.id !== id);
       saveAndRefresh();
+      if (activeAlarmMedId === id) {
+        stopAlarm();
+      }
     }
 
     function saveAndRefresh() {
@@ -931,6 +944,7 @@
 
     // Trigger Alarm
     function triggerAlarm(med) {
+      activeAlarmMedId = med.id;
       const banner = document.getElementById('alarm-banner');
       const text = document.getElementById('alarm-text');
 
@@ -971,10 +985,24 @@
     }
 
     function stopAlarm() {
+      // 1. Hide the Alert Banner
       document.getElementById('alarm-banner').style.display = 'none';
-      if (alarmInterval) clearInterval(alarmInterval);
+      activeAlarmMedId = null;
+
+      // 2. Stop Speech Synthesis immediately
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      // 3. Stop Audio Siren immediately
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
       if (alarmAudioContext) {
-        try { alarmAudioContext.close(); } catch(e) {}
+        try { 
+          alarmAudioContext.close(); 
+        } catch(e) {}
         alarmAudioContext = null;
       }
     }
