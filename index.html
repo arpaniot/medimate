@@ -44,9 +44,48 @@
     .alarm-active {
       animation: pulse-ring 1.2s infinite;
     }
+
+    /* SOS Button Pulse Animation */
+    @keyframes sos-glow {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .sos-pulse {
+      animation: sos-glow 1.5s infinite;
+    }
   </style>
 </head>
 <body id="app-body" class="bg-blue-50 min-h-screen text-gray-800 font-sans transition-all duration-200">
+
+  <!-- ==================== EMERGENCY SOS SIMULATED CALL OVERLAY ==================== -->
+  <div id="sos-modal" style="display: none;" class="fixed inset-0 z-50 bg-red-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-4 border-red-600 alarm-active">
+      <div class="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl animate-bounce">
+        <i class="fa-solid fa-phone-flip"></i>
+      </div>
+      <span class="inline-block px-3 py-1 bg-red-100 text-red-700 font-black rounded-full text-xs uppercase tracking-wider mb-2">Emergency Response Active</span>
+      <h2 class="text-3xl font-black text-gray-900">Connecting SOS...</h2>
+      <p class="text-sm text-gray-600 mt-1">Contacting Medical Dispatch & Emergency Services</p>
+      
+      <div class="my-6 p-4 bg-red-50 rounded-2xl border border-red-200">
+        <div class="flex justify-between items-center text-sm font-bold text-red-800 mb-1">
+          <span>Call Status:</span>
+          <span id="sos-status-text" class="animate-pulse">Dialing 911 Dispatch...</span>
+        </div>
+        <div class="w-full bg-red-200 rounded-full h-3 overflow-hidden">
+          <div id="sos-progress-bar" class="bg-red-600 h-3 rounded-full transition-all duration-1000 w-1/4"></div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Broadcasting GPS Location & Medical Profile...</p>
+      </div>
+
+      <div class="flex justify-center items-center gap-3">
+        <button type="button" onclick="cancelSosCall()" class="w-full bg-gray-900 hover:bg-black text-white font-extrabold py-3.5 px-6 rounded-2xl text-lg flex items-center justify-center gap-2 shadow-lg">
+          <i class="fa-solid fa-phone-slash"></i> Cancel Call
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ==================== PAGE 1: ONBOARDING SCREEN ==================== -->
   <div id="onboarding-screen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-600 to-indigo-800">
@@ -111,7 +150,7 @@
   <div id="main-app" style="display: none;">
 
     <!-- HEADER / ACCESSIBILITY BAR -->
-    <header class="bg-blue-700 text-white shadow-xl sticky top-0 z-50">
+    <header class="bg-blue-700 text-white shadow-xl sticky top-0 z-40">
       <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
         
         <div class="flex items-center space-x-3">
@@ -122,7 +161,7 @@
           </div>
         </div>
 
-        <!-- Controls & Reset Profile -->
+        <!-- Controls, Reset Profile & EMERGENCY SOS BUTTON -->
         <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button type="button" onclick="toggleTextSize()" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 shadow">
             <i class="fa-solid fa-font"></i> Text Size
@@ -135,6 +174,12 @@
           </button>
           <button type="button" onclick="resetProfile()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 shadow" title="Reset Profile">
             <i class="fa-solid fa-arrows-rotate"></i> Reset
+          </button>
+
+          <!-- MINI EMERGENCY SOS CALL BUTTON (TOP RIGHT) -->
+          <button type="button" onclick="triggerSosCallSequence()" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-xl font-black text-sm flex items-center gap-1.5 shadow-lg border border-red-300 sos-pulse transition transform active:scale-95" title="Emergency SOS Dispatch">
+            <i class="fa-solid fa-truck-medical text-yellow-300 animate-bounce"></i>
+            <span>SOS</span>
           </button>
         </div>
 
@@ -339,7 +384,7 @@
       }
     };
 
-    // Helper: Generate Direct Medicine Purchase Link (Google Shopping/Pharmacy Marketplace)
+    // Helper: Generate Direct Medicine Purchase Link
     function generatePurchaseUrl(medName) {
       return `https://www.google.com/search?tbm=shop&q=buy+${encodeURIComponent(medName)}+medicine+online`;
     }
@@ -377,6 +422,7 @@
     let onlineCache = {};
     let alarmAudioContext = null;
     let alarmInterval = null;
+    let sosTimer = null;
 
     // Initialization
     document.addEventListener('DOMContentLoaded', () => {
@@ -415,7 +461,55 @@
       }
     });
 
-    // AI MEDICINE SEARCH ENGINE WITH OPENFDA & AI FALLBACK + PURCHASE LINK GENERATOR
+    // EMERGENCY SOS TRIGGER WITH 2-STEP CONFIRMATION
+    function triggerSosCallSequence() {
+      // Step 1: First Confirmation
+      const firstConfirm = confirm("EMERGENCY ALERT!\n\nDo you want to initiate an urgent Emergency SOS Call to medical dispatch?");
+      if (!firstConfirm) return;
+
+      // Step 2: Second Confirmation (Double-check)
+      const secondConfirm = confirm("CRITICAL CONFIRMATION REQUIRED (2/2)\n\nAre you sure you want to dispatch Emergency Medical Services to your location?");
+      if (!secondConfirm) return;
+
+      // Launch Simulated Emergency Dispatch UI
+      executeSimulatedSosCall();
+    }
+
+    function executeSimulatedSosCall() {
+      const sosModal = document.getElementById('sos-modal');
+      const statusText = document.getElementById('sos-status-text');
+      const progressBar = document.getElementById('sos-progress-bar');
+      
+      sosModal.style.display = 'flex';
+      startAudioBeep();
+
+      speakText("Emergency S O S initiated! Transmitting location and medical profile to emergency team.");
+
+      let stage = 1;
+      sosTimer = setInterval(() => {
+        stage++;
+        if (stage === 2) {
+          statusText.innerText = "Transmitting Blood Group & Profile...";
+          progressBar.style.width = "50%";
+        } else if (stage === 3) {
+          statusText.innerText = "Dispatch Operator Connected (Simulated)...";
+          progressBar.style.width = "85%";
+          speakText("Medical dispatch connected. Hold line.");
+        } else if (stage === 4) {
+          statusText.innerText = "Emergency Team En Route!";
+          progressBar.style.width = "100%";
+        }
+      }, 2500);
+    }
+
+    function cancelSosCall() {
+      if (sosTimer) clearInterval(sosTimer);
+      document.getElementById('sos-modal').style.display = 'none';
+      stopAlarm();
+      speakText("Emergency S O S call cancelled.");
+    }
+
+    // AI MEDICINE SEARCH ENGINE WITH OPENFDA & AI FALLBACK
     async function searchMedicineOnline(isAuto = false) {
       const medNameInput = document.getElementById('med-name').value.trim();
       const previewBox = document.getElementById('search-preview-box');
@@ -504,7 +598,7 @@
         console.warn("FDA API fallback offline:", err);
       }
 
-      // 3. FINAL SAFE FALLBACK FOR ANY REAL OR UNKNOWN MEDICINE
+      // 3. FINAL SAFE FALLBACK FOR ANY MEDICINE
       const defaultInfo = {
         description: `${medNameInput} is a pharmaceutical medication. Manage and consume according to official healthcare professional instructions.`,
         sideEffects: "Consult a medical practitioner or pharmacist for detailed warnings.",
